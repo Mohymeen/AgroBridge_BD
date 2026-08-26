@@ -110,6 +110,91 @@ app.delete("/products/:id", async (req, res) => {
     });
   }
 });
+
+// Create Order
+app.post("/orders", async (req, res) => {
+  try {
+    const order = new Order(req.body);
+
+    await order.save();
+
+    res.status(201).json(order);
+
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Failed to place order"
+    });
+  }
+});
+
+// Get all Orders
+app.get("/orders", async (req, res) => {
+  try {
+    const orders = await Order.find();
+
+    res.json(orders);
+
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Failed to fetch orders"
+    });
+  }
+});
+
+// Update Order
+app.put("/orders/:id", async (req, res) => {
+  try {
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    if (!order) {
+      return res.status(404).json({
+        message: "Order not found"
+      });
+    }
+
+    res.json(order);
+
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Failed to update order"
+    });
+  }
+});
+
+// Delete Order
+app.delete("/orders/:id", async (req, res) => {
+  try {
+    const order = await Order.findByIdAndDelete(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        message: "Order not found"
+      });
+    }
+
+    res.json({
+      message: "Order deleted successfully",
+      order
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Failed to delete order"
+    });
+  }
+});
 // Start server
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
