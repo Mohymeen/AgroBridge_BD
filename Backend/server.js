@@ -27,6 +27,39 @@ mongoose
         console.log("MongoDB Connection Error:", error);
     });
 
+    // Create Product
+app.post("/products", async (req, res) => {
+  try {
+    const product = new Product(req.body);
+
+    await product.save();
+
+    res.status(201).json(product);
+
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Failed to create product"
+    });
+  }
+});
+
+// Get all Products
+app.get("/products", async (req, res) => {
+  try {
+    const products = await Product.find();
+
+    res.json(products);
+
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Failed to fetch products"
+    });
+  }
+});
 // Start server
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
