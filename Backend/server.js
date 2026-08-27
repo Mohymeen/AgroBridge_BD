@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const User = require("./models/user");
 const Product = require("./models/Product");
@@ -64,6 +65,61 @@ app.post("/register", async (req, res) => {
     res.status(500).json({
       message: "Registration Failed"
     });
+  }
+});
+
+// User Login Route
+app.post("/login", async (req, res) => {
+  try {
+
+    const { email, password } = req.body;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(401).json({
+        message: "Invalid email or password"
+      });
+    }
+
+    // Compare entered password with hashed password
+    const passwordMatch = await bcrypt.compare(
+      password,
+      user.password
+    );
+
+    if (!passwordMatch) {
+      return res.status(401).json({
+        message: "Invalid email or password"
+      });
+    }
+
+    // Create JWT token
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        role: user.role
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1h"
+      }
+    );
+
+    res.json({
+      message: "Login successful",
+      token
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+      message: "Login failed"
+    });
+
   }
 });
     // Create Product
