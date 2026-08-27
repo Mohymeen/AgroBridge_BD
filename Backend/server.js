@@ -9,7 +9,10 @@ const User = require("./models/user");
 const Product = require("./models/Product");
 const Order = require("./models/Order");
 
-const authMiddleware = require("./middleware/authMiddleware");
+const {
+  authMiddleware,
+  authorizeRoles
+} = require("./middleware/authMiddleware");
 
 const app = express();
 const PORT = 5000;
@@ -122,10 +125,10 @@ app.post("/login", async (req, res) => {
       message: "Login failed"
     });
 
-  }
+  }   
 });
     // Create Product
-app.post("/products", async (req, res) => {
+app.post("/products",authMiddleware,authorizeRoles("Farmer", "Admin"), async (req, res) => {
   try {
     const product = new Product(req.body);
 
