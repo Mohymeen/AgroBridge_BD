@@ -2,6 +2,8 @@ require("dotenv").config();
 
 const express = require("express");
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
+
 const User = require("./models/user");
 const Product = require("./models/Product");
 const Order = require("./models/Order");
@@ -27,6 +29,43 @@ mongoose
         console.log("MongoDB Connection Error:", error);
     });
 
+
+    // User Register Route
+app.post("/register", async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+      return res.status(400).json({
+        message: "Email already exists"
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      name,
+      email,
+      password: hashedPassword,
+      role
+    });
+
+    await user.save();
+
+    res.status(201).json({
+      message: "User Registered Successfully"
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Registration Failed"
+    });
+  }
+});
     // Create Product
 app.post("/products", async (req, res) => {
   try {
