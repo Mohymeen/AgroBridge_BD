@@ -9,6 +9,8 @@ const User = require("./models/user");
 const Product = require("./models/Product");
 const Order = require("./models/Order");
 
+const authMiddleware = require("./middleware/authMiddleware");
+
 const app = express();
 const PORT = 5000;
 
@@ -290,6 +292,17 @@ app.delete("/orders/:id", async (req, res) => {
     });
   }
 });
+
+
+// Protected Test Route
+app.get("/protected", authMiddleware, (req, res) => {
+  res.json({
+    message: "You accessed a protected route!",
+    user: req.user
+  });
+});
+
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
