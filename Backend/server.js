@@ -161,55 +161,65 @@ app.get("/products", async (req, res) => {
   }
 });
 
-app.put("/products/:id", async (req, res) => {
-  try {
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+app.put(
+  "/products/:id",
+  authMiddleware,
+  authorizeRoles("Farmer", "Admin"),
+  async (req, res) => {
+    try {
+      const product = await Product.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        { new: true }
+      );
 
-    if (!product) {
-      return res.status(404).json({
-        message: "Product not found"
+      if (!product) {
+        return res.status(404).json({
+          message: "Product not found"
+        });
+      }
+
+      res.json(product);
+
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).json({
+        message: "Failed to update product"
       });
     }
-
-    res.json(product);
-
-  } catch (error) {
-    console.log(error);
-
-    res.status(500).json({
-      message: "Failed to update product"
-    });
   }
-});
+);
 
 // Delete Product
-app.delete("/products/:id", async (req, res) => {
-  try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+app.delete(
+  "/products/:id",
+  authMiddleware,
+  authorizeRoles("Farmer", "Admin"),
+  async (req, res) => {
+    try {
+      const product = await Product.findByIdAndDelete(req.params.id);
 
-    if (!product) {
-      return res.status(404).json({
-        message: "Product not found"
+      if (!product) {
+        return res.status(404).json({
+          message: "Product not found"
+        });
+      }
+
+      res.json({
+        message: "Product deleted successfully",
+        product
+      });
+
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).json({
+        message: "Failed to delete product"
       });
     }
-
-    res.json({
-      message: "Product deleted successfully",
-      product
-    });
-
-  } catch (error) {
-    console.log(error);
-
-    res.status(500).json({
-      message: "Failed to delete product"
-    });
   }
-});
+);
 
 // Create Order
 app.post("/orders", async (req, res) => {
