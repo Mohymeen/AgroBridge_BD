@@ -313,9 +313,19 @@ app.put(
         });
       }
 
-      Object.assign(order, req.body);
+      if (req.user.role === "Admin") {
+  Object.assign(order, req.body);
+} else {
+  if (req.body.status || req.body.consumerId) {
+    return res.status(403).json({
+      message: "You cannot modify order status or ownership"
+    });
+  }
 
-      await order.save();
+  Object.assign(order, req.body);
+}
+
+await order.save();
 
       res.json(order);
 
@@ -328,7 +338,67 @@ app.put(
     }
   }
 );
+app.put(
+  "/orders/:id/status",
+  authMiddleware,
+  authorizeRoles("Admin"),
+  async (req, res) => {
+    try {
+      const order = await Order.findById(req.params.id);
 
+      if (!order) {
+        return res.status(404).json({
+          message: "Order not found"
+        });
+      }
+
+      const validStatuses = [
+        "Pending",
+        "Confirmed",
+        "Processing",
+        "Shipped",
+        "Delivered"
+      ];
+
+      if (!validStatuses.includes(req.body.status)) {
+        return res.status(400).json({
+          message: "Invalid order status"
+        });
+      }
+
+      const statusFlow = {
+  Pending: "Confirmed",
+  Confirmed: "Processing",
+  Processing: "Shipped",
+  Shipped: "Delivered"
+};
+
+if (order.status === "Delivered") {
+  return res.status(400).json({
+    message: "Order is already delivered"
+  });
+}
+
+if (statusFlow[order.status] !== req.body.status) {
+  return res.status(400).json({
+    message: `Order can only move from ${order.status} to ${statusFlow[order.status]}`
+  });
+}
+
+order.status = req.body.status;
+
+await order.save();
+      res.json(order);
+
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).json({
+        message: "Failed to update order status"
+      });
+    }
+  }
+);
 // Delete Order
 app.delete(
   "/orders/:id",
