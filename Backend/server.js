@@ -243,28 +243,41 @@ app.delete(
 );
 
 // Create Order
-app.post("/orders", async (req, res) => {
-  try {
-    const order = new Order(req.body);
+app.post(
+  "/orders",
+  authMiddleware,
+  authorizeRoles("Customer", "Admin"),
+  async (req, res) => {
+    try {
+     const order = new Order({
+        ...req.body,
+        consumerId: req.user.userId
+      });
+      await order.save();
 
-    await order.save();
+      res.status(201).json(order);
 
-    res.status(201).json(order);
+    } catch (error) {
+      console.log(error);
 
-  } catch (error) {
-    console.log(error);
-
-    res.status(500).json({
-      message: "Failed to place order"
-    });
+      res.status(500).json({
+        message: "Failed to place order"
+      });
+    }
   }
-});
+);
 
 // Get all Orders
-app.get("/orders", async (req, res) => {
+app.get(
+  "/orders",
+  authMiddleware,
+  authorizeRoles("Customer", "Admin"),
+  async (req, res) => {
   try {
-    const orders = await Order.find();
-
+    const orders =
+  req.user.role === "Admin"
+    ? await Order.find()
+    : await Order.find({ consumerId: req.user.userId });
     res.json(orders);
 
   } catch (error) {
@@ -277,56 +290,85 @@ app.get("/orders", async (req, res) => {
 });
 
 // Update Order
-app.put("/orders/:id", async (req, res) => {
-  try {
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+app.put(
+  "/orders/:id",
+  authMiddleware,
+  authorizeRoles("Customer", "Admin"),
+  async (req, res) => {
+    try {
+      const order = await Order.findById(req.params.id);
 
-    if (!order) {
-      return res.status(404).json({
-        message: "Order not found"
+      if (!order) {
+        return res.status(404).json({
+          message: "Order not found"
+        });
+      }
+
+      if (
+        req.user.role !== "Admin" &&
+        order.consumerId.toString() !== req.user.userId
+      ) {
+        return res.status(403).json({
+          message: "You are not authorized to modify this order"
+        });
+      }
+
+      Object.assign(order, req.body);
+
+      await order.save();
+
+      res.json(order);
+
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).json({
+        message: "Failed to update order"
       });
     }
-
-    res.json(order);
-
-  } catch (error) {
-    console.log(error);
-
-    res.status(500).json({
-      message: "Failed to update order"
-    });
   }
-});
+);
 
 // Delete Order
-app.delete("/orders/:id", async (req, res) => {
-  try {
-    const order = await Order.findByIdAndDelete(req.params.id);
+app.delete(
+  "/orders/:id",
+  authMiddleware,
+  authorizeRoles("Customer", "Admin"),
+  async (req, res) => {
+    try {
+      const order = await Order.findById(req.params.id);
 
-    if (!order) {
-      return res.status(404).json({
-        message: "Order not found"
+      if (!order) {
+        return res.status(404).json({
+          message: "Order not found"
+        });
+      }
+
+      if (
+        req.user.role !== "Admin" &&
+        order.consumerId.toString() !== req.user.userId
+      ) {
+        return res.status(403).json({
+          message: "You are not authorized to delete this order"
+        });
+      }
+
+      await order.deleteOne();
+
+      res.json({
+        message: "Order deleted successfully",
+        order
+      });
+
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).json({
+        message: "Failed to delete order"
       });
     }
-
-    res.json({
-      message: "Order deleted successfully",
-      order
-    });
-
-  } catch (error) {
-    console.log(error);
-
-    res.status(500).json({
-      message: "Failed to delete order"
-    });
   }
-});
-
+);
 
 // Protected Test Route
 app.get("/protected", authMiddleware, (req, res) => {
