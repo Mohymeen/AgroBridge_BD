@@ -130,8 +130,10 @@ app.post("/login", async (req, res) => {
     // Create Product
 app.post("/products",authMiddleware,authorizeRoles("Farmer", "Admin"), async (req, res) => {
   try {
-    const product = new Product(req.body);
-
+    const product = new Product({
+  ...req.body,
+  farmer: req.user.userId
+});
     await product.save();
 
     res.status(201).json(product);
@@ -148,8 +150,7 @@ app.post("/products",authMiddleware,authorizeRoles("Farmer", "Admin"), async (re
 // Get all Products
 app.get("/products", async (req, res) => {
   try {
-    const products = await Product.find();
-
+    const products = await Product.find().populate("farmer", "name");
     res.json(products);
 
   } catch (error) {
@@ -167,17 +168,26 @@ app.put(
   authorizeRoles("Farmer", "Admin"),
   async (req, res) => {
     try {
-      const product = await Product.findByIdAndUpdate(
-        req.params.id,
-        req.body,
-        { new: true }
-      );
+      const product = await Product.findById(req.params.id);
 
       if (!product) {
         return res.status(404).json({
           message: "Product not found"
         });
       }
+
+      if (
+        req.user.role !== "Admin" &&
+        product.farmer.toString() !== req.user.userId
+      ) {
+        return res.status(403).json({
+          message: "You are not authorized to modify this product"
+        });
+      }
+
+      Object.assign(product, req.body);
+
+      await product.save();
 
       res.json(product);
 
@@ -198,13 +208,24 @@ app.delete(
   authorizeRoles("Farmer", "Admin"),
   async (req, res) => {
     try {
-      const product = await Product.findByIdAndDelete(req.params.id);
+      const product = await Product.findById(req.params.id);
 
       if (!product) {
         return res.status(404).json({
           message: "Product not found"
         });
       }
+
+      if (
+        req.user.role !== "Admin" &&
+        product.farmer.toString() !== req.user.userId
+      ) {
+        return res.status(403).json({
+          message: "You are not authorized to delete this product"
+        });
+      }
+
+      await product.deleteOne();
 
       res.json({
         message: "Product deleted successfully",

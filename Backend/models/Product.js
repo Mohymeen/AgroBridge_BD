@@ -25,6 +25,12 @@ const productSchema = new mongoose.Schema(
     location: {
       type: String,
       required: true
+    },
+
+    farmer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
     }
   },
   {
