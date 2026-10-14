@@ -39,7 +39,7 @@ mongoose
     // User Register Route
 app.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role: requestedRole} = req.body;
 
     const existingUser = await User.findOne({ email });
 
@@ -55,14 +55,24 @@ app.post("/register", async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role
+      role: "Customer" // Default role is Customer
     });
 
     await user.save();
 
-    res.status(201).json({
-      message: "User Registered Successfully"
-    });
+   const message =
+  requestedRole && requestedRole !== "Customer"
+    ? "Registration successful. Your account has been created as Customer. Public registration does not allow Admin or other role privileges."
+    : "User registered successfully as Customer";
+
+res.status(201).json({
+  message,
+  user: {
+    name: user.name,
+    email: user.email,
+    role: user.role
+  }
+});
 
   } catch (error) {
     console.log(error);
@@ -127,6 +137,105 @@ app.post("/login", async (req, res) => {
 
   }   
 });
+
+
+// Get logged-in user's profile
+app.get("/users/me", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+
+    res.json(user);
+
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Failed to fetch profile"
+    });
+  }
+});
+
+
+// Update logged-in user's profile
+app.put("/users/me", authMiddleware, async (req, res) => {
+  try {
+    const { name, email } = req.body;
+
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+
+    if (name !== undefined) {
+      user.name = name;
+    }
+
+    if (email !== undefined) {
+      const existingUser = await User.findOne({
+        email,
+        _id: { $ne: user._id }
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          message: "Email already exists"
+        });
+      }
+
+      user.email = email;
+    }
+
+    await user.save();
+
+    res.json({
+      message: "Profile updated successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Failed to update profile"
+    });
+  }
+});
+
+// Admin: Get all users
+app.get(
+  "/users",
+  authMiddleware,
+  authorizeRoles("Admin"),
+  async (req, res) => {
+    try {
+      const users = await User.find().select("-password");
+
+      res.json(users);
+
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).json({
+        message: "Failed to fetch users"
+      });
+    }
+  }
+);
+
     // Create Product
 app.post("/products",authMiddleware,authorizeRoles("Farmer", "Admin"), async (req, res) => {
   try {
